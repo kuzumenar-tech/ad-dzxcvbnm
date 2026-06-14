@@ -2,201 +2,327 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<title>Mavi vs Turuncu Stickman</title>
+<title>Alan vs Turuncu Stickman</title>
 <style>
 body{
     margin:0;
     background:#222;
     overflow:hidden;
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+.container{
+    text-align: center;
 }
 canvas{
     display:block;
-    margin:auto;
     background:#87CEEB;
+    border: 3px solid #fff;
+}
+#timer{
+    color: #fff;
+    font-size: 32px;
+    margin-top: 20px;
+}
+#loadingText{
+    color: #fff;
+    font-size: 24px;
+    margin-bottom: 20px;
+    height: 30px;
 }
 </style>
 </head>
 <body>
 
-<canvas id="game" width="1000" height="500"></canvas>
+<div class="container">
+    <div id="loadingText">Grafik yükleniyor...</div>
+    <canvas id="game" width="1000" height="500"></canvas>
+    <div id="timer">Kalan Süre: 1:00:00</div>
+</div>
 
 <script>
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
+const loadingText = document.getElementById("loadingText");
+const timerDisplay = document.getElementById("timer");
 
 const gravity = 0.7;
+let gameStarted = false;
+let gameTime = 3600; // 1 saat = 3600 saniye
+
+// Image loading
+const images = {};
+let imagesLoaded = 0;
+let totalImages = 2;
+
+// Fotoğraf URL'leri (placeholder - gerçek fotoğrafları yükle)
+const imageUrls = {
+    alan: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect fill="%23333" width="100" height="100"/><text x="50" y="50" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="12">Alan Loading</text></svg>',
+    turuncu: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect fill="%23333" width="100" height="100"/><text x="50" y="50" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="12">Turuncu Loading</text></svg>'
+};
+
+function loadImage(name, url) {
+    const img = new Image();
+    img.onload = () => {
+        images[name] = img;
+        imagesLoaded++;
+        updateLoadingText();
+        if(imagesLoaded === totalImages) {
+            startGame();
+        }
+    };
+    img.onerror = () => {
+        console.log(`${name} yükleme başarısız, varsayılan çizim kullanılacak`);
+        imagesLoaded++;
+        updateLoadingText();
+        if(imagesLoaded === totalImages) {
+            startGame();
+        }
+    };
+    img.src = url;
+}
+
+function updateLoadingText() {
+    loadingText.textContent = `Grafik yükleniyor... (${imagesLoaded}/${totalImages})`;
+}
+
+function startGame() {
+    gameStarted = true;
+    loadingText.style.display = 'none';
+    gameLoop();
+}
 
 class Fighter{
-    constructor(x,color,controls){
-        this.x=x;
-        this.y=350;
-        this.w=40;
-        this.h=80;
-        this.color=color;
-        this.dx=0;
-        this.dy=0;
-        this.health=100;
-        this.controls=controls;
-        this.attacking=false;
+    constructor(x, name, isAlan, controls){
+        this.x = x;
+        this.y = 350;
+        this.w = 40;
+        this.h = 80;
+        this.name = name;
+        this.isAlan = isAlan;
+        this.dx = 0;
+        this.dy = 0;
+        this.health = 100;
+        this.controls = controls;
+        this.attacking = false;
     }
 
     draw(){
-        ctx.strokeStyle=this.color;
-        ctx.lineWidth=5;
+        if(this.isAlan && images.alan) {
+            ctx.drawImage(images.alan, this.x, this.y, 50, 80);
+        } else if(!this.isAlan && images.turuncu) {
+            ctx.drawImage(images.turuncu, this.x, this.y, 50, 80);
+        } else {
+            // Varsayılan çizim
+            ctx.strokeStyle = this.isAlan ? "gray" : "orange";
+            ctx.lineWidth = 5;
 
-        let cx=this.x+20;
-        let cy=this.y+20;
+            let cx = this.x + 20;
+            let cy = this.y + 20;
 
-        // kafa
-        ctx.beginPath();
-        ctx.arc(cx,cy,12,0,Math.PI*2);
-        ctx.stroke();
-
-        // gövde
-        ctx.beginPath();
-        ctx.moveTo(cx,cy+12);
-        ctx.lineTo(cx,cy+45);
-        ctx.stroke();
-
-        // kollar
-        ctx.beginPath();
-        ctx.moveTo(cx-15,cy+25);
-        ctx.lineTo(cx+15,cy+25);
-        ctx.stroke();
-
-        // bacaklar
-        ctx.beginPath();
-        ctx.moveTo(cx,cy+45);
-        ctx.lineTo(cx-12,cy+70);
-        ctx.moveTo(cx,cy+45);
-        ctx.lineTo(cx+12,cy+70);
-        ctx.stroke();
-
-        if(this.attacking){
-            ctx.strokeStyle="yellow";
+            // kafa
             ctx.beginPath();
-            ctx.moveTo(cx+15,cy+25);
-            ctx.lineTo(cx+40,cy+15);
+            ctx.arc(cx, cy, 12, 0, Math.PI*2);
             ctx.stroke();
+
+            // gövde
+            ctx.beginPath();
+            ctx.moveTo(cx, cy+12);
+            ctx.lineTo(cx, cy+45);
+            ctx.stroke();
+
+            // kollar
+            ctx.beginPath();
+            ctx.moveTo(cx-15, cy+25);
+            ctx.lineTo(cx+15, cy+25);
+            ctx.stroke();
+
+            // bacaklar
+            ctx.beginPath();
+            ctx.moveTo(cx, cy+45);
+            ctx.lineTo(cx-12, cy+70);
+            ctx.moveTo(cx, cy+45);
+            ctx.lineTo(cx+12, cy+70);
+            ctx.stroke();
+
+            if(this.attacking){
+                ctx.strokeStyle = "yellow";
+                ctx.beginPath();
+                ctx.moveTo(cx+15, cy+25);
+                ctx.lineTo(cx+40, cy+15);
+                ctx.stroke();
+            }
         }
+
+        // İsim yazısı
+        ctx.fillStyle = this.isAlan ? "gray" : "orange";
+        ctx.font = "16px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText(this.name, this.x + 25, this.y + 100);
     }
 
     update(){
-        this.x+=this.dx;
-        this.y+=this.dy;
+        this.x += this.dx;
+        this.y += this.dy;
 
-        this.dy+=gravity;
+        this.dy += gravity;
 
-        if(this.y>350){
-            this.y=350;
-            this.dy=0;
+        if(this.y > 350){
+            this.y = 350;
+            this.dy = 0;
         }
 
-        if(this.x<0) this.x=0;
-        if(this.x>960) this.x=960;
+        if(this.x < 0) this.x = 0;
+        if(this.x > 960) this.x = 960;
     }
 }
 
-const blue = new Fighter(150,"deepskyblue");
-const orange = new Fighter(800,"orange");
+const alan = new Fighter(150, "ALAN", true);
+const turuncu = new Fighter(800, "TURUNCU", false);
 
-const keys={};
+const keys = {};
 
-window.addEventListener("keydown",(e)=>{
-    keys[e.key]=true;
+window.addEventListener("keydown", (e) => {
+    keys[e.key] = true;
 
-    if(e.key==="w" && blue.y>=350)
-        blue.dy=-12;
+    if(e.key === "w" && alan.y >= 350)
+        alan.dy = -12;
 
-    if(e.key==="ArrowUp" && orange.y>=350)
-        orange.dy=-12;
+    if(e.key === "ArrowUp" && turuncu.y >= 350)
+        turuncu.dy = -12;
 
-    if(e.key==="f")
-        attack(blue,orange);
+    if(e.key === "f")
+        attack(alan, turuncu);
 
-    if(e.key==="l")
-        attack(orange,blue);
+    if(e.key === "l")
+        attack(turuncu, alan);
 });
 
-window.addEventListener("keyup",(e)=>{
-    keys[e.key]=false;
+window.addEventListener("keyup", (e) => {
+    keys[e.key] = false;
 });
 
-function attack(attacker,target){
+function attack(attacker, target){
+    attacker.attacking = true;
 
-    attacker.attacking=true;
+    setTimeout(() => {
+        attacker.attacking = false;
+    }, 150);
 
-    setTimeout(()=>{
-        attacker.attacking=false;
-    },150);
+    const distance = Math.abs(attacker.x - target.x);
 
-    const distance=Math.abs(attacker.x-target.x);
-
-    if(distance<80){
-        target.health-=10;
+    if(distance < 80){
+        target.health -= 10;
     }
 }
 
 function drawHealth(){
+    // Alan sağlık
+    ctx.fillStyle = "red";
+    ctx.fillRect(20, 20, 200, 20);
 
-    ctx.fillStyle="red";
-    ctx.fillRect(20,20,200,20);
+    ctx.fillStyle = "lime";
+    ctx.fillRect(20, 20, alan.health * 2, 20);
 
-    ctx.fillStyle="lime";
-    ctx.fillRect(20,20,blue.health*2,20);
+    ctx.fillStyle = "gray";
+    ctx.font = "14px Arial";
+    ctx.fillText("ALAN", 30, 35);
 
-    ctx.fillStyle="red";
-    ctx.fillRect(780,20,200,20);
+    // Turuncu sağlık
+    ctx.fillStyle = "red";
+    ctx.fillRect(780, 20, 200, 20);
 
-    ctx.fillStyle="lime";
-    ctx.fillRect(780,20,orange.health*2,20);
+    ctx.fillStyle = "lime";
+    ctx.fillRect(780, 20, turuncu.health * 2, 20);
+
+    ctx.fillStyle = "orange";
+    ctx.font = "14px Arial";
+    ctx.textAlign = "right";
+    ctx.fillText("TURUNCU", 970, 35);
+    ctx.textAlign = "left";
+}
+
+function updateTimer() {
+    gameTime--;
+    const hours = Math.floor(gameTime / 3600);
+    const minutes = Math.floor((gameTime % 3600) / 60);
+    const seconds = gameTime % 60;
+
+    const timeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    timerDisplay.textContent = `Kalan Süre: ${timeStr}`;
+
+    return gameTime > 0;
 }
 
 function winner(text){
-    ctx.fillStyle="black";
-    ctx.font="60px Arial";
-    ctx.fillText(text,250,200);
+    ctx.fillStyle = "rgba(0,0,0,0.7)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "white";
+    ctx.font = "60px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText(text, canvas.width/2, canvas.height/2);
 }
 
 function gameLoop(){
+    if(!gameStarted) return;
 
-    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     // zemin
-    ctx.fillStyle="green";
-    ctx.fillRect(0,430,1000,70);
+    ctx.fillStyle = "green";
+    ctx.fillRect(0, 430, 1000, 70);
 
-    blue.dx=0;
-    orange.dx=0;
+    alan.dx = 0;
+    turuncu.dx = 0;
 
-    if(keys["a"]) blue.dx=-5;
-    if(keys["d"]) blue.dx=5;
+    if(keys["a"]) alan.dx = -5;
+    if(keys["d"]) alan.dx = 5;
 
-    if(keys["ArrowLeft"]) orange.dx=-5;
-    if(keys["ArrowRight"]) orange.dx=5;
+    if(keys["ArrowLeft"]) turuncu.dx = -5;
+    if(keys["ArrowRight"]) turuncu.dx = 5;
 
-    blue.update();
-    orange.update();
+    alan.update();
+    turuncu.update();
 
-    blue.draw();
-    orange.draw();
+    alan.draw();
+    turuncu.draw();
 
     drawHealth();
 
-    if(blue.health<=0){
-        winner("🟠 Turuncu Kazandı!");
+    if(alan.health <= 0){
+        winner("🟠 TURUNCU KAZANDI!");
         return;
     }
 
-    if(orange.health<=0){
-        winner("🔵 Mavi Kazandı!");
+    if(turuncu.health <= 0){
+        winner("⚫ ALAN KAZANDI!");
+        return;
+    }
+
+    if(!updateTimer()){
+        if(alan.health > turuncu.health){
+            winner("⚫ ALAN KAZANDI!");
+        } else if(turuncu.health > alan.health){
+            winner("🟠 TURUNCU KAZANDI!");
+        } else {
+            winner("🤝 BERABERİ!");
+        }
         return;
     }
 
     requestAnimationFrame(gameLoop);
 }
 
-gameLoop();
+// Fotoğrafları yükle
+loadImage('alan', imageUrls.alan);
+loadImage('turuncu', imageUrls.turuncu);
+
+// Kontrol talimatları
+console.log("ALAN Kontrolü: A/D harfleri (hareket), W (zıpla), F (saldır)");
+console.log("TURUNCU Kontrolü: Ok tuşları (hareket), Yukarı Ok (zıpla), L (saldır)");
 </script>
 
 </body>
